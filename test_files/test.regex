@@ -1,0 +1,14 @@
+char a
+
+split 2 4
+char b
+jump 5
+char c
+
+split 6 8
+char d
+jump 5
+
+char e
+
+match
