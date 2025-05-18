@@ -25,41 +25,86 @@ pub enum Instruction {
     Char(char),
     Jump(usize),
     Split(usize, usize),
+    Charset(bool, Vec<(char, char)>, Vec<char>),
+    WildCard,
 }
 
-fn parse_match(args: &[&str]) -> Result<Instruction, String> {
-    if args.len() != 0 {
-        return Err(format!("`match` expects 0 arguments, but was provided {}: {:?}", args.len(), args));
+fn read_escaped_char(escaped: &str) -> Result<char, String> {
+    let (prefix, encoded) = escaped.split_at(1);
+
+    // If it's not an escaped character, just return it.
+    if prefix != "%" {
+        return match escaped.chars().next() {
+            Some(c) => Ok(c),
+            None => Err(format!("Could not read a character from '{}'", escaped))
+        }
+    }
+
+    // Parse the escaped character
+    match encoded.parse::<u32>() {
+        Err(e) => Err(format!("Error reading escaped character {e}")),
+        Ok(n) => match std::char::from_u32(n) {
+            Some(c) => Ok(c),
+            None => Err(format!("{n} is not a valid unicode character!")),
+        }
+    }
+}
+
+fn parse_match(args: &str) -> Result<Instruction, String> {
+    if args != "" {
+        return Err(format!("`match` expects 0 arguments, but was provided: {}", args));
     }
     Ok(Instruction::Match)
 }
 
-fn parse_char(args: &[&str]) -> Result<Instruction, String> {
-    if args.len() != 1 {
-        return Err(format!("`char` expects 1 argument, but was provided {}: {:?}", args.len(), args));
+fn parse_wildcard(args: &str) -> Result<Instruction, String> {
+    if args != "" {
+        return Err(format!("`any` expects 0 arguments, but was provided: {}", args));
     }
-
-    let arg = args[0];
-    if arg.chars().count() != 1 {
-        return Err(format!("The argument `char` must be one character, but encountered {}", arg));
-    }
-
-    Ok(Instruction::Char(arg.chars().next().unwrap()))
+    Ok(Instruction::WildCard)
 }
 
-fn parse_jump(args: &[&str]) -> Result<Instruction, String> {
-    if args.len() != 1 {
-        return Err(format!("`jump` expects 1 argument, but was provided {}: {:?}", args.len(), args));
+fn parse_charset(inverted: bool, args: &str) -> Result<Instruction, String> {
+    // charset [<range-low>,<range-high>]... [<char>]...
+    let mut ranges = Vec::new();
+    let mut chars = Vec::new();
+    for item in args.split(' ') {
+        match item.split_once(',') {
+            // If split once returns `None`, then there's no comma and this isn't a range
+            None => {
+                let c = read_escaped_char(item)?;
+                chars.push(c);
+            }
+            Some((s_min, s_max)) => {
+                let c_min = read_escaped_char(s_min)?;
+                let c_max = read_escaped_char(s_max)?;
+                if c_max < c_min {
+                    return Err(format!("Invalid range {c_max} is less than {c_min}"));
+                }
+                ranges.push((c_min, c_max))
+            } 
+        }
     }
+    Ok(Instruction::Charset(inverted, ranges, chars))
+}
 
-    let dest = args[0].parse::<usize>();
+fn parse_char(args: &str) -> Result<Instruction, String> {
+    // char <char>
+    let c = read_escaped_char(args)?;
+    Ok(Instruction::Char(c))
+}
+
+fn parse_jump(args: &str) -> Result<Instruction, String> {
+    // jump <dest>
+    let dest = args.parse::<usize>();
     match dest {
         Ok(dest) => Ok(Instruction::Jump(dest)),
         Err(err) => Err(format!("Failed to parse jump destination with error: {err}")),
     }
 }
 
-fn parse_split(args: &[&str]) -> Result<Instruction, String> {
+fn parse_split(args: &str) -> Result<Instruction, String> {
+    let args: Vec<&str> = args.split(' ').collect();
     if args.len() != 2 {
         return Err(format!("`split` expects 2 argument, but was provided {}: {:?}", args.len(), args));
     }
@@ -76,19 +121,30 @@ pub fn parse_regex(file_path: &str) -> Result<Vec<Instruction>, Box<dyn Error>> 
     let mut program = Vec::new();
     let contents = fs::read_to_string(file_path)?;
     for (line_number, line) in contents.lines().enumerate() {
-        let words: Vec<&str> = line.trim().split(' ').collect();
+        
+        let maybe_opcode: Option<&str> = line.trim().split(' ').next();
 
-        // Make sure there was something on the line
-        if words.len() == 0  || words[0] == "" {
+        // Make sure there was something meaningful on the line.
+        if maybe_opcode == None || maybe_opcode == Some("") {
             continue;
         }
 
-        let opcode = words[0];
+        let opcode = maybe_opcode.unwrap();
+        // Skip it if it's a comment.
+        if opcode.starts_with("#") {
+            continue;
+        }
+
+        let remainder = line.strip_prefix(opcode).unwrap().trim();
+
         let instruction = match opcode {
-            "match" => parse_match(&words[1..]),
-            "char" => parse_char(&words[1..]),
-            "jump" => parse_jump(&words[1..]),
-            "split" => parse_split(&words[1..]),
+            "match" => parse_match(remainder),
+            "any" => parse_wildcard(remainder),
+            "charset" => parse_charset(false, remainder),
+            "icharset" => parse_charset(true, remainder),
+            "char" => parse_char(remainder),
+            "jump" => parse_jump(remainder),
+            "split" => parse_split(remainder),
             _ => Err(format!("Unrecognized opcode `{}`", opcode)),
         };
 

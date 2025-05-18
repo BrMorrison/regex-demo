@@ -60,15 +60,38 @@ impl <'a> Executor<'a> {
         let mut temp_threads = ThreadList::new(self.program.len());
         while !self.current_threads.threads.is_empty() {
             for thread in self.current_threads.threads.iter() {
-                match self.program[thread.pc] {
+                match &self.program[thread.pc] {
                     Instruction::Match => return true,
-                    Instruction::Char(c) => if input_char == Some(c) {
+                    Instruction::Char(c) => if input_char == Some(*c) {
                         self.new_threads.add_thread(thread.pc + 1);
                     }
-                    Instruction::Jump(pc) => temp_threads.add_thread(pc),
+                    Instruction::WildCard => if input_char != None {
+                        self.new_threads.add_thread(thread.pc + 1);
+                    }
+                    Instruction::Charset(inverted, ranges, chars) => {
+                        if let Some(c) = input_char {
+                            let mut in_set = false;
+                            if chars.contains(&c) {
+                                in_set = true;
+                            }
+
+                            for (c_min, c_max) in ranges {
+                                if *c_min <= c && c <= *c_max {
+                                    in_set = true;
+                                }
+                            }
+
+                            // If we find the character and we want it to be in the set or we don't
+                            // find the character and don't want it in the set, then keep going.
+                            if in_set != *inverted {
+                                self.new_threads.add_thread(thread.pc + 1);
+                            }
+                        }
+                    }
+                    Instruction::Jump(pc) => temp_threads.add_thread(*pc),
                     Instruction::Split(pc1, pc2) => {
-                        temp_threads.add_thread(pc1);
-                        temp_threads.add_thread(pc2);
+                        temp_threads.add_thread(*pc1);
+                        temp_threads.add_thread(*pc2);
                     }
                 }
             }

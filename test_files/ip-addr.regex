@@ -1,0 +1,65 @@
+# regex: ((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])
+split 1 5
+char 2
+char 5
+charset 0,5
+jump 15
+split 6 10
+char 2
+charset 0,4
+charset 0,9
+jump 15
+split 11 12
+charset 0 1
+split 13 14
+charset 0,9
+charset 0,9
+char .
+split 17 21
+char 2
+char 5
+charset 0,5
+jump 31
+split 22 26
+char 2
+charset 0,4
+charset 0,9
+jump 31
+split 27 28
+charset 0 1
+split 29 30
+charset 0,9
+charset 0,9
+char .
+split 33 37
+char 2
+char 5
+charset 0,5
+jump 47
+split 38 42
+char 2
+charset 0,4
+charset 0,9
+jump 47
+split 43 44
+charset 0 1
+split 45 46
+charset 0,9
+charset 0,9
+char .
+split 49 53
+char 2
+char 5
+charset 0,5
+jump 63
+split 54 58
+char 2
+charset 0,4
+charset 0,9
+jump 63
+split 59 60
+charset 0 1
+split 61 62
+charset 0,9
+charset 0,9
+match
