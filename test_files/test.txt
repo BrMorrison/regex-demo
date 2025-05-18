@@ -1,9 +1,0 @@
-Test file to for the regex a(b|c)d*e
-
-abe: True
-ace: True
-abde: True
-aabddde: True
-abcde: False
-bde: False
-aaaaa: False

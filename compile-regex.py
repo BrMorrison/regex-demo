@@ -3,6 +3,11 @@
 from dataclasses import dataclass
 import sys
 
+_whitespace_chars = ['\n', ' ', '\t', '\r', '\f', '\v']
+_alpha_num_ranges = [('0','9'), ('A', 'Z'), ('a', 'z')]
+_alpha_num_chars = ['_']
+_num_ranges = [('0', '9')]
+
 #region types
 
 class Construction:
@@ -243,7 +248,21 @@ def parse_charset(s: str) -> tuple[CharSet, int]:
                 else:
                     assert False, "Cannot have a range with an escaped character!"
             case '\\':
-                assert False, "Not supported"
+                assert index != len(inside) - 1
+                escaped = inside[index+1]
+                match escaped:
+                    case 's':
+                        chars += _whitespace_chars
+                    case 'd':
+                        ranges += _num_ranges
+                    case 'w':
+                        ranges += _alpha_num_ranges
+                        chars += _alpha_num_chars
+                    case '[' | ']' | '(' | ')' | '{' | '}' | '^' | '\\':
+                        chars.append(escaped)
+                    case _:
+                        assert False, f"Unsupported escaped character: {escaped}"
+                index += 1
             case _:
                 chars.append(inside[index])
         index += 1
@@ -289,8 +308,19 @@ def parse(regex: str) -> Construction:
             case '\\':
                 assert index+1 < len(regex), \
                     f"Escape character with nothing after it at {index} of '{regex}'"
+                
+                escaped = regex[index+1]
+                match escaped:
+                    case 's' | 'S':
+                        instructions.append(CharSet([], _whitespace_chars, escaped.isupper()))
+                    case 'd' | 'D':
+                        instructions.append(CharSet(_num_ranges, [], escaped.isupper()))
+                    case 'w' | 'W':
+                        instructions.append(
+                            CharSet(_alpha_num_ranges, _alpha_num_chars, escaped.isupper()))
+                    case _:
+                        instructions.append(Literal(escaped))
                 index += 1
-                instructions.append(Literal(regex[index]))
             case '{':
                 min_count, max_count, end = parse_count(regex[index:])
                 index += end

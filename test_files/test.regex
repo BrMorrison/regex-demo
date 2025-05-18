@@ -1,14 +1,95 @@
-char a
-
-split 2 4
-char b
-jump 5
-char c
-
+# A regex that searches for URIs, email addresses, and IP addresses
+# regex: [\w]+://[^/\s?#]+(\?[^\s#]*)?(#[^\s]*)?|[\w.+-]+@[\w.-]+\.[\w.-]+|((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)
+split 1 19
+charset 0,9 A,Z a,z _
+split 1 3
+char :
+char /
+char /
+icharset / %10 %32 %9 %13 %12 %11 ? #
 split 6 8
-char d
-jump 5
-
-char e
-
+split 9 13
+char ?
+split 11 13
+icharset %10 %32 %9 %13 %12 %11 #
+jump 10
+split 14 18
+char #
+split 16 18
+icharset %10 %32 %9 %13 %12 %11
+jump 15
+jump 92
+split 20 29
+charset 0,9 A,Z a,z _ . + -
+split 20 22
+char @
+charset 0,9 A,Z a,z _ . -
+split 23 25
+char .
+charset 0,9 A,Z a,z _ . -
+split 26 28
+jump 92
+split 30 34
+char 2
+char 5
+charset 0,5
+jump 44
+split 35 39
+char 2
+charset 0,4
+charset 0,9
+jump 44
+split 40 41
+charset 0 1
+charset 0,9
+split 43 44
+charset 0,9
+char .
+split 46 50
+char 2
+char 5
+charset 0,5
+jump 60
+split 51 55
+char 2
+charset 0,4
+charset 0,9
+jump 60
+split 56 57
+charset 0 1
+charset 0,9
+split 59 60
+charset 0,9
+char .
+split 62 66
+char 2
+char 5
+charset 0,5
+jump 76
+split 67 71
+char 2
+charset 0,4
+charset 0,9
+jump 76
+split 72 73
+charset 0 1
+charset 0,9
+split 75 76
+charset 0,9
+char .
+split 78 82
+char 2
+char 5
+charset 0,5
+jump 92
+split 83 87
+char 2
+charset 0,4
+charset 0,9
+jump 92
+split 88 89
+charset 0 1
+charset 0,9
+split 91 92
+charset 0,9
 match
