@@ -33,7 +33,7 @@ fn main() {
     }
     let end = start.elapsed().unwrap();
 
-    println!("{} matches in {} us", matches.len(), end.as_micros());
+    println!("{} matches in {} s", matches.len(), (end.as_micros() as f64 / 1_000_000.0));
     for line in matches {
         println!("{}", line);
     }

@@ -12,7 +12,6 @@ struct ThreadList {
 struct Executor<'a> {
     program: &'a[Instruction],
     current_threads: ThreadList,
-    new_threads: ThreadList,
 }
 
 impl Thread {
@@ -46,8 +45,66 @@ impl <'a> Executor<'a> {
         Executor {
             program: prog,
             current_threads: ThreadList::new(prog_size),
-            new_threads: ThreadList::new(prog_size),
         }
+    }
+
+    fn _execution_step(&self, temp_threads: &mut ThreadList, next_threads: &mut ThreadList, input_char: Option<char>) -> bool {
+        let mut consume_and_step = |pc: usize| { next_threads.add_thread(pc); };
+        let mut step_execution = |pc: usize| { temp_threads.add_thread(pc); };
+        for thread in self.current_threads.threads.iter() {
+            match (&self.program[thread.pc], &input_char) {
+                (Instruction::Match, _) => return true,
+                (Instruction::Die, _) => (), // Do nothing and let the thread die.
+                (Instruction::Consume, Some(_)) => consume_and_step(thread.pc + 1),
+                (Instruction::Consume, None) => (),
+
+                (Instruction::Char(_, _), None) => (),
+                (Instruction::Char(c, false), Some(input_c)) => if input_c == c {
+                    consume_and_step(thread.pc + 1);
+                }
+                (Instruction::Char(c, true), Some(input_c)) => if input_c != c {
+                    // The inverted matchers don't consume input characters
+                    step_execution(thread.pc + 1);
+                }
+
+                (Instruction::CharOption(_, _), None) => (),
+                (Instruction::CharOption(c, pc), _) => {
+                    if input_char == Some(*c) {
+                        consume_and_step(*pc);
+                    } else {
+                        step_execution(thread.pc + 1);
+                    }
+                }
+
+                (Instruction::Range(_, _, _), None) => (),
+                (Instruction::Range(c_min, c_max, false), Some(c)) => {
+                    if c_min <= c && c <= c_max {
+                        consume_and_step(thread.pc + 1);
+                    }
+                }
+                (Instruction::Range(c_min, c_max, true), Some(c)) => {
+                    if c < c_min || c_max < c {
+                        step_execution(thread.pc + 1);
+                    }
+                }
+
+                (Instruction::RangeOption(_, _, _), None) => (),
+                (Instruction::RangeOption(c_min, c_max, pc), Some(c)) => {
+                    if c_min <= c && c <= c_max {
+                        consume_and_step(*pc);
+                    } else {
+                        step_execution(thread.pc + 1);
+                    }
+                }
+
+                (Instruction::Jump(pc), _) => step_execution(*pc),
+                (Instruction::Split(pc1, pc2), _) => {
+                    step_execution(*pc1);
+                    step_execution(*pc2);
+                }
+            }
+        }
+        false
     }
 
     fn execution_step(&mut self, input_char: Option<char>) -> bool {
@@ -58,42 +115,10 @@ impl <'a> Executor<'a> {
         }
 
         let mut temp_threads = ThreadList::new(self.program.len());
+        let mut next_threads = ThreadList::new(self.program.len());
         while !self.current_threads.threads.is_empty() {
-            for thread in self.current_threads.threads.iter() {
-                match &self.program[thread.pc] {
-                    Instruction::Match => return true,
-                    Instruction::Char(c) => if input_char == Some(*c) {
-                        self.new_threads.add_thread(thread.pc + 1);
-                    }
-                    Instruction::WildCard => if input_char != None {
-                        self.new_threads.add_thread(thread.pc + 1);
-                    }
-                    Instruction::Charset(inverted, ranges, chars) => {
-                        if let Some(c) = input_char {
-                            let mut in_set = false;
-                            if chars.contains(&c) {
-                                in_set = true;
-                            }
-
-                            for (c_min, c_max) in ranges {
-                                if *c_min <= c && c <= *c_max {
-                                    in_set = true;
-                                }
-                            }
-
-                            // If we find the character and we want it to be in the set or we don't
-                            // find the character and don't want it in the set, then keep going.
-                            if in_set != *inverted {
-                                self.new_threads.add_thread(thread.pc + 1);
-                            }
-                        }
-                    }
-                    Instruction::Jump(pc) => temp_threads.add_thread(*pc),
-                    Instruction::Split(pc1, pc2) => {
-                        temp_threads.add_thread(*pc1);
-                        temp_threads.add_thread(*pc2);
-                    }
-                }
+            if self._execution_step(&mut temp_threads, &mut next_threads, input_char) {
+                return true;
             }
             self.current_threads.threads.clear();
             mem::swap(&mut self.current_threads, &mut temp_threads);
@@ -101,8 +126,7 @@ impl <'a> Executor<'a> {
 
         // Swap the new threads into current.
         self.current_threads.threads.clear();
-        mem::swap(&mut self.current_threads, &mut self.new_threads);
-        self.new_threads = ThreadList::new(self.program.len());
+        mem::swap(&mut self.current_threads, &mut next_threads);
         false
     }
 

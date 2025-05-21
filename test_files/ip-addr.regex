@@ -2,64 +2,73 @@
 split 1 5
 char 2
 char 5
-charset 0,5
-jump 15
+range 0 5
+jump 17
 split 6 10
 char 2
-charset 0,4
-charset 0,9
-jump 15
-split 11 12
-charset 0 1
-split 13 14
-charset 0,9
-charset 0,9
+range 0 4
+range 0 9
+jump 17
+split 11 14
+optChar 0 14
+optChar 1 14
+die
+split 15 16
+range 0 9
+range 0 9
 char .
-split 17 21
+split 19 23
 char 2
 char 5
-charset 0,5
-jump 31
-split 22 26
+range 0 5
+jump 35
+split 24 28
 char 2
-charset 0,4
-charset 0,9
-jump 31
-split 27 28
-charset 0 1
-split 29 30
-charset 0,9
-charset 0,9
+range 0 4
+range 0 9
+jump 35
+split 29 32
+optChar 0 32
+optChar 1 32
+die
+split 33 34
+range 0 9
+range 0 9
 char .
-split 33 37
+split 37 41
 char 2
 char 5
-charset 0,5
-jump 47
-split 38 42
+range 0 5
+jump 53
+split 42 46
 char 2
-charset 0,4
-charset 0,9
-jump 47
-split 43 44
-charset 0 1
-split 45 46
-charset 0,9
-charset 0,9
+range 0 4
+range 0 9
+jump 53
+split 47 50
+optChar 0 50
+optChar 1 50
+die
+split 51 52
+range 0 9
+range 0 9
 char .
-split 49 53
+split 55 59
 char 2
 char 5
-charset 0,5
-jump 63
-split 54 58
+range 0 5
+jump 71
+split 60 64
 char 2
-charset 0,4
-charset 0,9
-jump 63
-split 59 60
-charset 0 1
-split 61 62
-charset 0,9
-charset 0,9
+range 0 4
+range 0 9
+jump 71
+split 65 68
+optChar 0 68
+optChar 1 68
+die
+split 69 70
+range 0 9
+range 0 9
 match
+

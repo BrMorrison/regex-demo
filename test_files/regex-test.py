@@ -16,6 +16,6 @@ with open(input_file, 'r') as f:
             matches.append(line)
     elapsed = time.time() - start
 
-    print(f"{len(matches)} matches in {elapsed * 1_000_000.0} us")
+    print(f"{len(matches)} matches in {elapsed} s")
     for line in matches:
         print(line)

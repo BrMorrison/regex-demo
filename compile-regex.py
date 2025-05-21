@@ -33,7 +33,7 @@ class WildCard(Construction):
     Matches any single character, ex: `.`
     '''
     def compile(self, pc: int=0) -> tuple[str, int]:
-        return (f"any\n", pc+1)
+        return (f"consume\n", pc+1)
 
 @dataclass
 class CharSet(Construction):
@@ -44,21 +44,48 @@ class CharSet(Construction):
     chars: list[str]
     inverse: bool
 
-    def build_val(self) -> str:
-        ranges = ''
-        chars = ''
-        for start, end in self.ranges:
-            ranges += f"{escape_encode(start)},{escape_encode(end)} "
+    def _is_single_char(self) -> bool:
+        return len(self.chars) == 1 and len(self.ranges) == 0
+
+    def _is_single_range(self) -> bool:
+        return len(self.chars) == 0 and len(self.ranges) == 1
+
+    def _compile_inverse(self, pc) -> tuple[str, int]:
+        assert self.inverse == True
+        code = ''
+        final_pc = pc + len(self.chars) + len(self.ranges) + 1
         for c in self.chars:
-            chars += f"{escape_encode(c)} "
-        return f"{ranges.strip()} {chars.strip()}".strip()
+            code += f"invChar {escape_encode(c)}\n"
+        for c_min, c_max in self.ranges:
+            code += f"invRange {escape_encode(c_min)} {escape_encode(c_max)}\n"
+
+        # Inverted character sets end with a wildcard since none of the individual statements
+        # consume input.
+        return (code + 'consume\n', final_pc)
+
+    def _compile_normal(self, pc) -> tuple[str, int]:
+        assert self.inverse == False
+
+        # Handle single characters and ranges separately since they don't actually need options.
+        if self._is_single_char():
+            return (f"char {escape_encode(self.chars[0])}\n", pc+1)
+        elif self._is_single_range():
+            c_min, c_max = self.ranges[0]
+            return (f"range {escape_encode(c_min)} {escape_encode(c_max)}\n", pc+1)
+
+        code = ''
+        final_pc = pc + len(self.chars) + len(self.ranges) + 1
+        for c in self.chars:
+            code += f"optChar {escape_encode(c)} {final_pc}\n"
+        for c_min, c_max in self.ranges:
+            code += f"optRange {escape_encode(c_min)} {escape_encode(c_max)} {final_pc}\n"
+        return (code + 'die\n', final_pc)
 
     def compile(self, pc: int=0) -> tuple[str, int]:
-        val = self.build_val()
         if self.inverse:
-            return (f"icharset {val}\n", pc+1)
+            return self._compile_inverse(pc)
         else:
-            return (f"charset {val}\n", pc+1)
+            return self._compile_normal(pc)
 
 @dataclass
 class Sequence(Construction):
@@ -109,6 +136,8 @@ class Option(Construction):
         L1: code for val
         L2:
         """
+        # NOTE: We could do a strength-reduction optimization to optChar or OptRange if the option
+        # is on a simple character or range.
         l1 = pc+1
         code, l2 = self.val.compile(l1)
         return (f"split {l1} {l2}\n" + code, l2)
@@ -229,8 +258,6 @@ def parse_charset(s: str) -> tuple[CharSet, int]:
     index = 0
     ranges: list[tuple[str, str]] = []
     chars: list[str] = []
-
-    # TODO: Probably want to take a pass through it first to remove any escaped characters
 
     while index < len(inside):
         match inside[index]:
