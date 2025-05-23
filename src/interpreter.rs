@@ -1,206 +1,143 @@
-use std::mem;
+mod thread;
 use crate::regex::Instruction;
-
-struct Thread {
-    pc: usize,
-}
-
-#[derive(Debug)]
-struct ThreadList {
-    size: usize,
-    threads: Vec<u64>,
-}
-
-struct ThreadListIter<'a> {
-    thread_list: &'a ThreadList,
-    index: usize,
-}
+use crate::interpreter::thread::{ThreadList, ThreadGroup};
+use std::mem;
 
 struct Executor<'a> {
     program: &'a[Instruction],
-    current_threads: ThreadList,
-}
-
-impl Thread {
-    fn new(pc: usize) -> Self {
-        Thread {
-            pc: pc
-        }
-    }
-}
-
-impl ThreadList {
-    fn new(capacity: usize) -> Self {
-        // How many u64s do we need to have a bit for each possible program address?
-        // The ceiling of capacity/64
-        let num_elems = capacity.div_ceil(64);
-        ThreadList { size: capacity, threads: vec![0; num_elems] }
-    }
-
-    fn add_thread(&mut self, pc: usize) {
-        if pc > self.size {
-            return;
-        }
-        // Strength-reduction should deal with these multiplications/divisions by a power of 2.
-        let threads_index = pc / 64;
-        let thread_bit_index = pc - (threads_index * 64);
-        self.threads[threads_index] |= 1 << thread_bit_index;
-    }
-
-    fn clear(&mut self) {
-        for elem in self.threads.iter_mut() {
-            *elem = 0;
-        }
-    }
-
-    fn iter(&self) -> ThreadListIter {
-        ThreadListIter {
-            thread_list: self,
-            index: 0,
-        }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.threads.iter().all(|val| { *val == 0 })
-    }
-}
-
-impl <'a> Iterator for ThreadListIter<'a> {
-    type Item = Thread;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let mut threads_index = self.index / 64;
-        while self.index <= self.thread_list.size {
-            // Get the u64 from the threadlist that contains our current index.
-            let thread_bit_index = self.index - (threads_index * 64);
-            let elem = self.thread_list.threads[threads_index];
-
-            // Clear out all the bits below our index and see if we have any set bits remaining.
-            let remainder = elem >> thread_bit_index;
-            if remainder == 0 {
-                // If we've run out of bits in this block, move on to the next one.
-                threads_index += 1;
-                self.index = threads_index * 64;
-                continue;
-            }
-
-            let next_bit_index = remainder.trailing_zeros() + thread_bit_index as u32;
-            let next_index = next_bit_index as usize + (threads_index * 64);
-            self.index = next_index + 1;
-            return Some(Thread::new(next_index));
-        }
-
-        None
-    }
 }
 
 impl <'a> Executor<'a> {
     fn new(prog: &'a[Instruction]) -> Self {
-        // Worst case number of threads is the number of instructions in the program.
-        let prog_size = prog.len();
-
         Executor {
             program: prog,
-            current_threads: ThreadList::new(prog_size),
         }
     }
 
-    fn _execution_step(&self, temp_threads: &mut ThreadList, next_threads: &mut ThreadList, input_char: Option<char>) -> bool {
-        let mut consume_and_step = |pc: usize| { next_threads.add_thread(pc); };
-        let mut step_execution = |pc: usize| { temp_threads.add_thread(pc); };
-        for thread in self.current_threads.iter() {
-            match (&self.program[thread.pc], &input_char) {
-                (Instruction::Match, _) => return true,
+    fn _execution_step(
+            &self,
+            current_threads: &mut ThreadList,
+            temp_threads: &mut ThreadList,
+            next_threads: &mut ThreadList,
+            char_index: usize,
+            input_char: Option<char>
+        ) -> Vec<(usize, usize)> {
+        let mut consume_and_step = |pc: usize, thread_group: ThreadGroup| {
+            next_threads.add_thread(pc, thread_group);
+        };
+        let mut step_execution = |pc: usize, thread_group: ThreadGroup| {
+            temp_threads.add_thread(pc, thread_group);
+        };
+        let mut matches = Vec::new();
+        for mut thread_group in current_threads.iter_mut() {
+            let pc = thread_group.pc;
+            match (&self.program[thread_group.pc], &input_char) {
+                (Instruction::Match, _) => {
+                    let mut tmp_matches = thread_group.get_match_data(0);
+                    matches.append(&mut tmp_matches)
+                }
                 (Instruction::Die, _) => (), // Do nothing and let the thread die.
-                (Instruction::Consume, Some(_)) => consume_and_step(thread.pc + 1),
+                (Instruction::Consume, Some(_)) => consume_and_step(pc + 1, thread_group),
                 (Instruction::Consume, None) => (),
+                (Instruction::Save(dest), _) => {
+                    thread_group.save(*dest, char_index);
+                    step_execution(pc + 1, thread_group);
+                }
 
                 (Instruction::Char(_, _), None) => (),
                 (Instruction::Char(c, false), Some(input_c)) => if input_c == c {
-                    consume_and_step(thread.pc + 1);
+                    consume_and_step(pc + 1, thread_group);
                 }
                 (Instruction::Char(c, true), Some(input_c)) => if input_c != c {
                     // The inverted matchers don't consume input characters
-                    step_execution(thread.pc + 1);
+                    step_execution(pc + 1, thread_group);
                 }
 
                 (Instruction::CharOption(_, _), None) => (),
-                (Instruction::CharOption(c, pc), _) => {
-                    if input_char == Some(*c) {
-                        consume_and_step(*pc);
+                (Instruction::CharOption(c, new_pc), Some(input_c)) => {
+                    if input_c == c {
+                        consume_and_step(*new_pc, thread_group);
                     } else {
-                        step_execution(thread.pc + 1);
+                        step_execution(pc + 1, thread_group);
                     }
                 }
 
                 (Instruction::Range(_, _, _), None) => (),
                 (Instruction::Range(c_min, c_max, false), Some(c)) => {
                     if c_min <= c && c <= c_max {
-                        consume_and_step(thread.pc + 1);
+                        consume_and_step(pc + 1, thread_group);
                     }
                 }
                 (Instruction::Range(c_min, c_max, true), Some(c)) => {
                     if c < c_min || c_max < c {
-                        step_execution(thread.pc + 1);
+                        step_execution(pc + 1, thread_group);
                     }
                 }
 
                 (Instruction::RangeOption(_, _, _), None) => (),
-                (Instruction::RangeOption(c_min, c_max, pc), Some(c)) => {
+                (Instruction::RangeOption(c_min, c_max, new_pc), Some(c)) => {
                     if c_min <= c && c <= c_max {
-                        consume_and_step(*pc);
+                        consume_and_step(*new_pc, thread_group);
                     } else {
-                        step_execution(thread.pc + 1);
+                        step_execution(pc + 1, thread_group);
                     }
                 }
 
-                (Instruction::Jump(pc), _) => step_execution(*pc),
+                (Instruction::Jump(new_pc), _) => step_execution(*new_pc, thread_group),
                 (Instruction::Split(pc1, pc2), _) => {
-                    step_execution(*pc1);
-                    step_execution(*pc2);
+                    step_execution(*pc1, thread_group.clone());
+                    step_execution(*pc2, thread_group);
                 }
             }
         }
-        false
+        matches
     }
 
-    fn execution_step(&mut self, input_char: Option<char>) -> bool {
-        // For each character in the string, try and match the regex starting at that
-        // character. This allows for partial matches in the string.
-        if let Some(_) = input_char {
-            self.current_threads.add_thread(0);
-        }
-
+    fn execution_step(&mut self, current_threads: &mut ThreadList, char_index: usize, input_char: Option<char>) -> Vec<(usize, usize)> {
         let mut temp_threads = ThreadList::new(self.program.len());
         let mut next_threads = ThreadList::new(self.program.len());
+        let mut matches = Vec::new();
 
-        while !self.current_threads.is_empty() {
-            if self._execution_step(&mut temp_threads, &mut next_threads, input_char) {
-                return true;
-            }
-            self.current_threads.clear();
-            mem::swap(&mut self.current_threads, &mut temp_threads);
+        while !current_threads.is_empty() {
+            matches.append(&mut self._execution_step(current_threads, &mut temp_threads, &mut next_threads, char_index, input_char));
+            current_threads.clear();
+            mem::swap(current_threads, &mut temp_threads);
         }
 
-        // Swap the new threads into current.
-        self.current_threads.clear();
-        mem::swap(&mut self.current_threads, &mut next_threads);
-        false
+        // Swap the next threads into current.
+        current_threads.clear();
+        mem::swap( current_threads, &mut next_threads);
+
+        matches
     }
 
-    fn run(&mut self, input: &str) -> bool {
-        for input_char in input.chars() {
-            if self.execution_step(Some(input_char)) {
-                return true;
-            }
+    fn run(&mut self, current_threads: &mut ThreadList, input: &'a str) -> Option<(usize, usize)> {
+        let mut all_matches = Vec::new();
+
+        for (char_index, input_char) in input.chars().enumerate() {
+            all_matches.append(&mut self.execution_step(current_threads, char_index, Some(input_char)));
         }
 
         // Run one final execution step in case there are any threads on a `match`
-        self.execution_step(None)
+        all_matches.append(&mut self.execution_step(current_threads, input.len(), None));
+
+        let longer_match = |wrapped_match1: Option<(usize, usize)>, match2: &(usize, usize)| -> Option<(usize, usize)> {
+            if let Some(match1) = wrapped_match1 {
+                if match1.1 - match1.0 > match2.1 - match2.0 {
+                    return wrapped_match1;
+                }
+            }
+            Some(*match2)
+        };
+
+        all_matches.iter().fold(None, longer_match)
+
     }
 }
 
-pub fn search(prog: &[Instruction], input: &str) -> bool {
+pub fn search(prog: &[Instruction], input: &str) -> Option<(usize, usize)> {
     let mut executor = Executor::new(prog);
-    executor.run(input)
+    let mut current_threads = ThreadList::new(prog.len());
+    current_threads.add_thread(0, ThreadGroup::new(0));
+    executor.run(&mut current_threads, input)
 }

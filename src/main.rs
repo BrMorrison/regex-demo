@@ -27,7 +27,8 @@ fn main() {
     let start = time::SystemTime::now();
     let mut matches: Vec<&str> = Vec::new();
     for line in search_text.lines() {
-        if interpreter::search(&regex_prog, line) {
+        if let Some((_start, _end)) = interpreter::search(&regex_prog, line) {
+            //println!("Matched '{}' in '{line}'", &line[start..end]);
             matches.push(line);
         }
     }

@@ -24,6 +24,7 @@ pub enum Instruction {
     Match,
     Die,
     Consume,
+    Save(usize),
     Char(char, bool),
     CharOption(char, usize),
     Range(char, char, bool),
@@ -73,6 +74,16 @@ fn parse_wildcard(args: &str) -> Result<Instruction, String> {
     }
     Ok(Instruction::Consume)
 }
+
+fn parse_save(args: &str) -> Result<Instruction, String> {
+    // save <dest>
+    let dest = args.parse::<usize>();
+    match dest {
+        Ok(dest) => Ok(Instruction::Save(dest)),
+        Err(err) => Err(format!("Failed to parse save destination with error: {err}")),
+    }
+}
+
 
 fn parse_char(args: &str, inverted: bool) -> Result<Instruction, String> {
     // [i]char <char>
@@ -173,6 +184,7 @@ pub fn parse_regex(file_path: &str) -> Result<Vec<Instruction>, Box<dyn Error>> 
             "match"    => parse_match(remainder),
             "die"      => parse_die(remainder),
             "consume"  => parse_wildcard(remainder),
+            "save"     => parse_save(remainder),
             "char"     => parse_char(remainder, false),
             "invChar"  => parse_char(remainder, true),
             "optChar"  => parse_optional_char(remainder),
