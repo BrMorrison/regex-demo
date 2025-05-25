@@ -38,21 +38,16 @@ def execution_step(
         if sc >= len(s):
             return
         c = s[sc]
-        if not (c >= i.escaped_char1 and c <= i.escaped_char2):
+        in_range = c >= i.escaped_char1 and c <= i.escaped_char2
+        if in_range == i.inverted:
             return
         sc += 1
-    elif isinstance(i, inst.InvCompare):
+    elif isinstance(i, inst.Branch):
         if sc >= len(s):
             return
         c = s[sc]
-        if c >= i.escaped_char1 and c <= i.escaped_char2:
-            return
-        sc += 1
-    elif isinstance(i, inst.OptCompare):
-        if sc >= len(s):
-            return
-        c = s[sc]
-        if c >= i.escaped_char1 and c <= i.escaped_char2:
+        in_range = c >= i.escaped_char1 and c <= i.escaped_char2
+        if in_range:
             next_pc = i.dest
     else:
         raise AssertionError(f"{i} is not a recognized instruction!")

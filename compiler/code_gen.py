@@ -4,8 +4,8 @@ from functools import singledispatch
 
 # The wildcard and die operations are encoded as special cases of the `Compare` instruction that
 # use an invalid character (0xFF).
-_wildcard_instruction = InvCompare("%255", "%255")
-_die_instruction = Compare("%255", "%255")
+_wildcard_instruction = Compare(True, "%255", "%255")
+_die_instruction = Compare(False, "%255", "%255")
 
 def compile(val: syntax.Construction) -> list[Instruction]:
     code, _ = compile_helper(val, 0)
@@ -15,13 +15,13 @@ def compile(val: syntax.Construction) -> list[Instruction]:
     return code
 
 @singledispatch
-def compile_helper(val, pc:int) -> tuple[list[Instruction], int]:
+def compile_helper(val, _:int) -> tuple[list[Instruction], int]:
     raise AssertionError(f"Unexpected type for val {val.type}")
 
 @compile_helper.register
 def _(val: syntax.Literal, pc: int) -> tuple[list[Instruction], int]:
     escaped = escape_encode(val.val)
-    return ([Compare(escaped, escaped)], pc+1)
+    return ([Compare(False, escaped, escaped)], pc+1)
 
 @compile_helper.register
 def _(val: syntax.Group, pc: int) -> tuple[list[Instruction], int]:
@@ -37,25 +37,24 @@ def _(_: syntax.WildCard, pc: int) -> tuple[list[Instruction], int]:
 @compile_helper.register
 def _(val: syntax.CharSet, pc: int) -> tuple[list[Instruction], int]:
     # Handle single characters and ranges separately since they don't actually need options.
-    inst = InvCompare if val.inverse else Compare
     if val._is_single_char():
         escaped = escape_encode(val.chars[0])
-        return ([inst(escaped, escaped)], pc+1)
+        return ([Compare(val.inverse, escaped, escaped)], pc+1)
     elif val._is_single_range():
         c_min, c_max = val.ranges[0]
-        return ([inst(escape_encode(c_min), escape_encode(c_max))], pc+1)
+        return ([Compare(val.inverse, escape_encode(c_min), escape_encode(c_max))], pc+1)
     
     # More complex character sets require a series of commands
     """
     ---- Normal Comparison ----
-        OptCompare for single characters <dest=L1>
-        OptCompare for character ranges <dest=L1>
+        Branches for single characters <dest=L1>
+        Branches for character ranges <dest=L1>
     L0: Die
     L1: Consume
     L2:
     ---- Inverse Comparison ----
-        OptCompare for single characters <dest=L1>
-        OptCompare for character ranges <dest=L1>
+        Branches for single characters <dest=L1>
+        Branches for character ranges <dest=L1>
     L0: Consume
         Jump L2
     L1: Die
@@ -74,9 +73,9 @@ def _(val: syntax.CharSet, pc: int) -> tuple[list[Instruction], int]:
         code_postfix = [_wildcard_instruction, Jump(l2), _die_instruction]
 
     for c in val.chars:
-        code.append(OptCompare(escape_encode(c), escape_encode(c), l1))
+        code.append(Branch(escape_encode(c), escape_encode(c), l1))
     for c_min, c_max in val.ranges:
-        code.append(OptCompare(escape_encode(c_min), escape_encode(c_max), l1))
+        code.append(Branch(escape_encode(c_min), escape_encode(c_max), l1))
     code += code_postfix
 
     return (code, l2)

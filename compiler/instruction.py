@@ -59,23 +59,14 @@ class Compare(Instruction):
     """
     Consumes the current input character if it's within a given range and fails otherwise.
     """
+    inverted: bool
     escaped_char1: str
     escaped_char2: str
     def code(self) -> str:
         return f"Compare {self.escaped_char1} {self.escaped_char2}"
 
 @dataclass
-class InvCompare(Instruction):
-    """
-    Consumes the current input character if it's not within a given range and fails otherwise.
-    """
-    escaped_char1: str
-    escaped_char2: str
-    def code(self) -> str:
-        return f"InvCompare {self.escaped_char1} {self.escaped_char2}"
-
-@dataclass
-class OptCompare(Instruction):
+class Branch(Instruction):
     """
     Jump to a given destination if the current input character is within a given range.
     """
