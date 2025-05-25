@@ -25,8 +25,6 @@ pub enum Instruction {
     Die,
     Consume,
     Save(usize),
-    Char(char, bool),
-    CharOption(char, usize),
     Range(char, char, bool),
     RangeOption(char, char, usize),
     Jump(usize),
@@ -56,23 +54,9 @@ fn read_escaped_char(escaped: &str) -> Result<char, String> {
 
 fn parse_match(args: &str) -> Result<Instruction, String> {
     if args != "" {
-        return Err(format!("`match` expects 0 arguments, but was provided: {}", args));
+        return Err(format!("`Match` expects 0 arguments, but was provided: {}", args));
     }
     Ok(Instruction::Match)
-}
-
-fn parse_die(args: &str) -> Result<Instruction, String> {
-    if args != "" {
-        return Err(format!("`die` expects 0 arguments, but was provided: {}", args));
-    }
-    Ok(Instruction::Die)
-}
-
-fn parse_wildcard(args: &str) -> Result<Instruction, String> {
-    if args != "" {
-        return Err(format!("`consume` expects 0 arguments, but was provided: {}", args));
-    }
-    Ok(Instruction::Consume)
 }
 
 fn parse_save(args: &str) -> Result<Instruction, String> {
@@ -84,31 +68,22 @@ fn parse_save(args: &str) -> Result<Instruction, String> {
     }
 }
 
-
-fn parse_char(args: &str, inverted: bool) -> Result<Instruction, String> {
-    // [i]char <char>
-    let c = read_escaped_char(args)?;
-    Ok(Instruction::Char(c, inverted))
-}
-
-fn parse_optional_char(args: &str) -> Result<Instruction, String> {
-    // ochar <char> <pc>
-    let (c, match_dest) = args.split_once(' ').unwrap();
-    let c = read_escaped_char(c)?;
-
-    let match_dest = match_dest.parse::<usize>();
-    match match_dest {
-        Ok(dest) => Ok(Instruction::CharOption(c, dest)),
-        Err(err) => Err(format!("Failed to parse option destination with error: {err}")),
-    }
-}
-
 fn parse_range(args: &str, inverted: bool) -> Result<Instruction, String> {
-    // [i]range <min> <max>
+    // [Inv]Compare <min> <max>
     let args: Vec<&str> = args.split(' ').collect();
     if args.len() != 2 {
-        return Err(format!("`range` expects 2 argument, but was provided {}: {:?}", args.len(), args));
+        return Err(format!("`Compare` expects 2 argument, but was provided {}: {:?}", args.len(), args));
     }
+
+    // Wildcard and Die instructions are special cases of Compare
+    if args[0] == "%255" && args[1] == "%255" {
+        if inverted {
+            return Ok(Instruction::Consume);
+        } else {
+            return Ok(Instruction::Die);
+        }
+    }
+
     let min_char = read_escaped_char(args[0])?;
     let max_char = read_escaped_char(args[1])?;
     if max_char < min_char {
@@ -119,10 +94,10 @@ fn parse_range(args: &str, inverted: bool) -> Result<Instruction, String> {
 }
 
 fn parse_optional_range(args: &str) -> Result<Instruction, String> {
-    // optRange <min> <max> <pc>
+    // OptCompare <min> <max> <pc>
     let args: Vec<&str> = args.split(' ').collect();
     if args.len() != 3 {
-        return Err(format!("`range` expects 3 argument, but was provided {}: {:?}", args.len(), args));
+        return Err(format!("`OptCompare` expects 3 argument, but was provided {}: {:?}", args.len(), args));
     }
     let min_char = read_escaped_char(args[0])?;
     let max_char = read_escaped_char(args[1])?;
@@ -138,7 +113,7 @@ fn parse_optional_range(args: &str) -> Result<Instruction, String> {
 }
 
 fn parse_jump(args: &str) -> Result<Instruction, String> {
-    // jump <dest>
+    // Jump <dest>
     let dest = args.parse::<usize>();
     match dest {
         Ok(dest) => Ok(Instruction::Jump(dest)),
@@ -147,9 +122,10 @@ fn parse_jump(args: &str) -> Result<Instruction, String> {
 }
 
 fn parse_split(args: &str) -> Result<Instruction, String> {
+    // Split <dest1> <dest2>
     let args: Vec<&str> = args.split(' ').collect();
     if args.len() != 2 {
-        return Err(format!("`split` expects 2 argument, but was provided {}: {:?}", args.len(), args));
+        return Err(format!("`Split` expects 2 argument, but was provided {}: {:?}", args.len(), args));
     }
     let dest1 = args[0].parse::<usize>();
     let dest2 = args[1].parse::<usize>();
@@ -181,18 +157,13 @@ pub fn parse_regex(file_path: &str) -> Result<Vec<Instruction>, Box<dyn Error>> 
         let remainder = line.strip_prefix(opcode).unwrap().trim();
 
         let instruction = match opcode {
-            "match"    => parse_match(remainder),
-            "die"      => parse_die(remainder),
-            "consume"  => parse_wildcard(remainder),
-            "save"     => parse_save(remainder),
-            "char"     => parse_char(remainder, false),
-            "invChar"  => parse_char(remainder, true),
-            "optChar"  => parse_optional_char(remainder),
-            "range"    => parse_range(remainder, false),
-            "invRange" => parse_range(remainder, true),
-            "optRange" => parse_optional_range(remainder),
-            "jump"     => parse_jump(remainder),
-            "split"    => parse_split(remainder),
+            "Match"      => parse_match(remainder),
+            "Save"       => parse_save(remainder),
+            "Compare"    => parse_range(remainder, false),
+            "InvCompare" => parse_range(remainder, true),
+            "OptCompare" => parse_optional_range(remainder),
+            "Jump"       => parse_jump(remainder),
+            "Split"      => parse_split(remainder),
             _ => Err(format!("Unrecognized opcode `{}`", opcode)),
         };
 

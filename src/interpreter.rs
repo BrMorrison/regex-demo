@@ -44,24 +44,6 @@ impl <'a> Executor<'a> {
                     step_execution(pc + 1, thread_group);
                 }
 
-                (Instruction::Char(_, _), None) => (),
-                (Instruction::Char(c, false), Some(input_c)) => if input_c == c {
-                    consume_and_step(pc + 1, thread_group);
-                }
-                (Instruction::Char(c, true), Some(input_c)) => if input_c != c {
-                    // The inverted matchers don't consume input characters
-                    step_execution(pc + 1, thread_group);
-                }
-
-                (Instruction::CharOption(_, _), None) => (),
-                (Instruction::CharOption(c, new_pc), Some(input_c)) => {
-                    if input_c == c {
-                        consume_and_step(*new_pc, thread_group);
-                    } else {
-                        step_execution(pc + 1, thread_group);
-                    }
-                }
-
                 (Instruction::Range(_, _, _), None) => (),
                 (Instruction::Range(c_min, c_max, false), Some(c)) => {
                     if c_min <= c && c <= c_max {
@@ -70,14 +52,14 @@ impl <'a> Executor<'a> {
                 }
                 (Instruction::Range(c_min, c_max, true), Some(c)) => {
                     if c < c_min || c_max < c {
-                        step_execution(pc + 1, thread_group);
+                        consume_and_step(pc + 1, thread_group);
                     }
                 }
 
                 (Instruction::RangeOption(_, _, _), None) => (),
                 (Instruction::RangeOption(c_min, c_max, new_pc), Some(c)) => {
                     if c_min <= c && c <= c_max {
-                        consume_and_step(*new_pc, thread_group);
+                        step_execution(*new_pc, thread_group);
                     } else {
                         step_execution(pc + 1, thread_group);
                     }

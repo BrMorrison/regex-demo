@@ -1,78 +1,82 @@
 # regex: ((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])
-split 1 3
-consume
-jump 0
-save 0
-split 5 9
-char 2
-char 5
-range 0 5
-jump 21
-split 10 14
-char 2
-range 0 4
-range 0 9
-jump 21
-split 15 18
-optChar 0 18
-optChar 1 18
-die
-split 19 20
-range 0 9
-range 0 9
-char .
-split 23 27
-char 2
-char 5
-range 0 5
-jump 39
-split 28 32
-char 2
-range 0 4
-range 0 9
-jump 39
-split 33 36
-optChar 0 36
-optChar 1 36
-die
-split 37 38
-range 0 9
-range 0 9
-char .
-split 41 45
-char 2
-char 5
-range 0 5
-jump 57
-split 46 50
-char 2
-range 0 4
-range 0 9
-jump 57
-split 51 54
-optChar 0 54
-optChar 1 54
-die
-split 55 56
-range 0 9
-range 0 9
-char .
-split 59 63
-char 2
-char 5
-range 0 5
-jump 75
-split 64 68
-char 2
-range 0 4
-range 0 9
-jump 75
-split 69 72
-optChar 0 72
-optChar 1 72
-die
-split 73 74
-range 0 9
-range 0 9
-save 1
-match
+Split 1 3
+InvCompare %255 %255
+Jump 0
+Save 0
+Split 5 9
+Compare 2 2 
+Compare 5 5 
+Compare 0 5
+Jump 22
+Split 10 14
+Compare 2 2 
+Compare 0 4
+Compare 0 9
+Jump 22
+Split 15 19
+OptCompare 1 1 18
+OptCompare 0 0 18
+Compare %255 %255
+InvCompare %255 %255
+Split 20 21
+Compare 0 9
+Compare 0 9
+Compare . . 
+Split 24 28
+Compare 2 2 
+Compare 5 5 
+Compare 0 5
+Jump 41
+Split 29 33
+Compare 2 2 
+Compare 0 4
+Compare 0 9
+Jump 41
+Split 34 38
+OptCompare 1 1 37
+OptCompare 0 0 37
+Compare %255 %255
+InvCompare %255 %255
+Split 39 40
+Compare 0 9
+Compare 0 9
+Compare . . 
+Split 43 47
+Compare 2 2 
+Compare 5 5 
+Compare 0 5
+Jump 60
+Split 48 52
+Compare 2 2 
+Compare 0 4
+Compare 0 9
+Jump 60
+Split 53 57
+OptCompare 1 1 56
+OptCompare 0 0 56
+Compare %255 %255
+InvCompare %255 %255
+Split 58 59
+Compare 0 9
+Compare 0 9
+Compare . . 
+Split 62 66
+Compare 2 2 
+Compare 5 5 
+Compare 0 5
+Jump 79
+Split 67 71
+Compare 2 2 
+Compare 0 4
+Compare 0 9
+Jump 79
+Split 72 76
+OptCompare 1 1 75
+OptCompare 0 0 75
+Compare %255 %255
+InvCompare %255 %255
+Split 77 78
+Compare 0 9
+Compare 0 9
+Save 1
+Match
