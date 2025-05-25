@@ -1,4 +1,4 @@
-from syntax import *
+from .syntax import *
 
 _whitespace_chars = ['\n', ' ', '\t', '\r', '\f', '\v']
 _alpha_num_ranges = [('0','9'), ('A', 'Z'), ('a', 'z')]
@@ -169,7 +169,7 @@ def parse(regex: str) -> Construction:
                 instructions += [inst] * min_count
                 optional_count = max_count - min_count
                 if optional_count > 0:
-                    instructions += [inst] * optional_count
+                    instructions += [Option(inst)] * optional_count
             case '[':
                 inst, chars_parsed = parse_charset(regex[index:])
                 instructions.append(inst)
