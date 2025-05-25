@@ -88,27 +88,41 @@ class CharSet(Construction):
             return (f"{command} {escape_encode(c_min)} {escape_encode(c_max)}\n", pc+1)
         
         # More complex character sets require a series of commands
-        code = _die_instruction
-        final_pc = pc + len(self.chars) + len(self.ranges) + 1
+        """
+        ---- Normal Comparison ----
+            OptCompare for single characters <dest=L1>
+            OptCompare for character ranges <dest=L1>
+        L0: Die
+        L1: Consume
+        L2:
+        ---- Inverse Comparison ----
+            OptCompare for single characters <dest=L1>
+            OptCompare for character ranges <dest=L1>
+        L0: Consume
+            Jump L2
+        L1: Die
+        L2:
+        """
+        code = ''
+        l0 = pc + len(self.chars) + len(self.ranges)
 
-        # There's going to be a die command at the end of all the options. If we're doing an
-        # inverse comparison, then matching should send us to die and for normal comparison
-        # matching should jump us over the die command and land on a consume command.
         if not self.inverse:
-            code += _wildcard_instruction
-            dest_pc = final_pc
-            final_pc += 1
+            l1 = l0 + 1
+            l2 = l0 + 2
+            code_postfix = _die_instruction + _wildcard_instruction
         else:
-            # This will land on the die command
-            dest_pc = final_pc - 1
+            l1 = l0 + 2
+            l2 = l0 + 3
+            code_postfix = _wildcard_instruction + f"Jump {l2}\n" + _die_instruction
 
         for c in self.chars:
             escaped = escape_encode(c)
-            code = f"OptCompare {escaped} {escaped} {dest_pc}\n" + code
+            code += f"OptCompare {escaped} {escaped} {l1}\n"
         for c_min, c_max in self.ranges:
-            code = f"OptCompare {escape_encode(c_min)} {escape_encode(c_max)} {dest_pc}\n" + code
-        
-        return (code, final_pc)
+            code += f"OptCompare {escape_encode(c_min)} {escape_encode(c_max)} {l1}\n"
+        code += code_postfix
+
+        return (code, l2)
 
 @dataclass
 class Sequence(Construction):

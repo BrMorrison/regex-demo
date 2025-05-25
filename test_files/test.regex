@@ -3,158 +3,164 @@ Split 1 3
 InvCompare %255 %255
 Jump 0
 Save 0
-Split 5 50
-OptCompare a z 10
-OptCompare A Z 10
-OptCompare 0 9 10
+Split 5 56
 OptCompare _ _ 10
+OptCompare 0 9 10
+OptCompare A Z 10
+OptCompare a z 10
 Compare %255 %255
 InvCompare %255 %255
 Split 5 12
 Compare : : 
 Compare / / 
 Compare / / 
-OptCompare # # 24
-OptCompare ? ? 24
-OptCompare %11 %11 24
-OptCompare %12 %12 24
-OptCompare %13 %13 24
-OptCompare %9 %9 24
-OptCompare %32 %32 24
-OptCompare %10 %10 24
-OptCompare / / 24
+OptCompare / / 26
+OptCompare %10 %10 26
+OptCompare %32 %32 26
+OptCompare %9 %9 26
+OptCompare %13 %13 26
+OptCompare %12 %12 26
+OptCompare %11 %11 26
+OptCompare ? ? 26
+OptCompare # # 26
+InvCompare %255 %255
+Jump 27
 Compare %255 %255
-Split 15 26
-Split 27 38
+Split 15 28
+Split 29 42
 Compare ? ? 
-Split 29 38
-OptCompare # # 36
-OptCompare %11 %11 36
-OptCompare %12 %12 36
-OptCompare %13 %13 36
-OptCompare %9 %9 36
-OptCompare %32 %32 36
-OptCompare %10 %10 36
+Split 31 42
+OptCompare %10 %10 40
+OptCompare %32 %32 40
+OptCompare %9 %9 40
+OptCompare %13 %13 40
+OptCompare %12 %12 40
+OptCompare %11 %11 40
+OptCompare # # 40
+InvCompare %255 %255
+Jump 41
 Compare %255 %255
-Jump 28
-Split 39 49
+Jump 30
+Split 43 55
 Compare # # 
-Split 41 49
-OptCompare %11 %11 47
-OptCompare %12 %12 47
-OptCompare %13 %13 47
-OptCompare %9 %9 47
-OptCompare %32 %32 47
-OptCompare %10 %10 47
+Split 45 55
+OptCompare %10 %10 53
+OptCompare %32 %32 53
+OptCompare %9 %9 53
+OptCompare %13 %13 53
+OptCompare %12 %12 53
+OptCompare %11 %11 53
+InvCompare %255 %255
+Jump 54
 Compare %255 %255
-Jump 40
-Jump 157
-Split 51 82
-OptCompare a z 59
-OptCompare A Z 59
-OptCompare 0 9 59
-OptCompare - - 59
-OptCompare + + 59
-OptCompare . . 59
-OptCompare _ _ 59
+Jump 44
+Jump 163
+Split 57 88
+OptCompare _ _ 65
+OptCompare . . 65
+OptCompare + + 65
+OptCompare - - 65
+OptCompare 0 9 65
+OptCompare A Z 65
+OptCompare a z 65
 Compare %255 %255
 InvCompare %255 %255
-Split 51 61
+Split 57 67
 Compare @ @ 
-OptCompare a z 69
-OptCompare A Z 69
-OptCompare 0 9 69
-OptCompare - - 69
-OptCompare . . 69
-OptCompare _ _ 69
+OptCompare _ _ 75
+OptCompare . . 75
+OptCompare - - 75
+OptCompare 0 9 75
+OptCompare A Z 75
+OptCompare a z 75
 Compare %255 %255
 InvCompare %255 %255
-Split 62 71
+Split 68 77
 Compare . . 
-OptCompare a z 79
-OptCompare A Z 79
-OptCompare 0 9 79
-OptCompare - - 79
-OptCompare . . 79
-OptCompare _ _ 79
+OptCompare _ _ 85
+OptCompare . . 85
+OptCompare - - 85
+OptCompare 0 9 85
+OptCompare A Z 85
+OptCompare a z 85
 Compare %255 %255
 InvCompare %255 %255
-Split 72 81
-Jump 157
-Split 83 87
+Split 78 87
+Jump 163
+Split 89 93
 Compare 2 2 
 Compare 5 5 
 Compare 0 5
-Jump 100
-Split 88 92
+Jump 106
+Split 94 98
 Compare 2 2 
 Compare 0 4
 Compare 0 9
-Jump 100
-Split 93 97
-OptCompare 1 1 96
-OptCompare 0 0 96
+Jump 106
+Split 99 103
+OptCompare 0 0 102
+OptCompare 1 1 102
 Compare %255 %255
 InvCompare %255 %255
 Compare 0 9
-Split 99 100
+Split 105 106
 Compare 0 9
 Compare . . 
-Split 102 106
+Split 108 112
 Compare 2 2 
 Compare 5 5 
 Compare 0 5
-Jump 119
-Split 107 111
+Jump 125
+Split 113 117
 Compare 2 2 
 Compare 0 4
 Compare 0 9
-Jump 119
-Split 112 116
-OptCompare 1 1 115
-OptCompare 0 0 115
+Jump 125
+Split 118 122
+OptCompare 0 0 121
+OptCompare 1 1 121
 Compare %255 %255
 InvCompare %255 %255
 Compare 0 9
-Split 118 119
+Split 124 125
 Compare 0 9
 Compare . . 
-Split 121 125
+Split 127 131
 Compare 2 2 
 Compare 5 5 
 Compare 0 5
-Jump 138
-Split 126 130
+Jump 144
+Split 132 136
 Compare 2 2 
 Compare 0 4
 Compare 0 9
-Jump 138
-Split 131 135
-OptCompare 1 1 134
-OptCompare 0 0 134
+Jump 144
+Split 137 141
+OptCompare 0 0 140
+OptCompare 1 1 140
 Compare %255 %255
 InvCompare %255 %255
 Compare 0 9
-Split 137 138
+Split 143 144
 Compare 0 9
 Compare . . 
-Split 140 144
+Split 146 150
 Compare 2 2 
 Compare 5 5 
 Compare 0 5
-Jump 157
-Split 145 149
+Jump 163
+Split 151 155
 Compare 2 2 
 Compare 0 4
 Compare 0 9
-Jump 157
-Split 150 154
-OptCompare 1 1 153
-OptCompare 0 0 153
+Jump 163
+Split 156 160
+OptCompare 0 0 159
+OptCompare 1 1 159
 Compare %255 %255
 InvCompare %255 %255
 Compare 0 9
-Split 156 157
+Split 162 163
 Compare 0 9
 Save 1
 Match
