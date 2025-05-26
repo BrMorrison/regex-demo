@@ -1,7 +1,8 @@
-use std::collections::hash_map;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::LinkedList;
+use std::iter::Enumerate;
 use std::mem;
+use std::slice;
+use std::vec;
 
 #[derive(PartialEq, Eq, Clone, Hash)]
 struct ThreadData {
@@ -20,40 +21,40 @@ impl ThreadData {
 }
 
 pub struct ThreadList {
-    threads: HashMap<usize, HashSet<ThreadData>>,
+    threads: Vec<Option<LinkedList<ThreadData>>>,
 }
 
 pub struct ThreadListIterMut<'a> {
-    iter: hash_map::IterMut<'a, usize, HashSet<ThreadData>>,
+    iter: Enumerate<slice::IterMut<'a, Option<LinkedList<ThreadData>>>>,
 }
 
 impl ThreadList {
     pub fn new(capacity: usize) -> Self {
-        ThreadList { threads: HashMap::with_capacity(capacity) }
+        ThreadList { threads: vec![None; capacity] }
     }
 
     pub fn add_thread(&mut self, pc: usize, mut thread_data: ThreadGroup) {
-        match self.threads.get_mut(&pc) {
-            // If there is already thread data, combine it with the new data
-            Some(data) => {
-                for val in thread_data.data.drain() {
-                    data.insert(val);
-                }
-            },
-            None => {self.threads.insert(pc, thread_data.data);}
+        if let Some(data) =  &mut self.threads[pc] {
+            data.append(&mut thread_data.data);
+        } else {
+            let mut new_data = LinkedList::new();
+            new_data.append(&mut thread_data.data);
+            self.threads[pc] = Some(new_data)
         }
     }
 
     pub fn clear(&mut self) {
-        self.threads.clear();
+        for thread in self.threads.iter_mut() {
+            *thread = None;
+        }
     }
 
     pub fn iter_mut(&mut self) -> ThreadListIterMut {
-        ThreadListIterMut { iter: self.threads.iter_mut() }
+        ThreadListIterMut { iter: self.threads.iter_mut().enumerate() }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.threads.is_empty()
+        self.threads.iter().all(|t| { t.is_none() })
     }
 
 }
@@ -62,21 +63,21 @@ impl ThreadList {
 #[derive(Clone)]
 pub struct ThreadGroup {
     pub pc: usize,
-    data: HashSet<ThreadData>,
+    data: LinkedList<ThreadData>,
 }
 
 impl ThreadGroup {
     pub fn new(pc: usize) -> Self {
         ThreadGroup {
             pc: pc,
-            data: HashSet::from([ThreadData::new()]),
+            data: LinkedList::from([ThreadData::new()]),
         }
     }
 
     pub fn save(&mut self, match_index: usize, char_index: usize) {
-        self.data = self.data.drain()
-            .map(|mut data| { data.match_indices[match_index] = char_index; data })
-            .collect();
+        for thread_data in self.data.iter_mut() {
+            thread_data.match_indices[match_index] = char_index;
+        }
     }
 
     pub fn get_match_data(&self, match_index: usize) -> Vec<(usize, usize)> {
@@ -93,8 +94,18 @@ impl <'a> Iterator for ThreadListIterMut<'a> {
     type Item = ThreadGroup;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(pc, thread_data)| {
-            ThreadGroup { pc: *pc, data: mem::take(thread_data) }
-        })
+        loop {
+            match self.iter.next() {
+                None => return None,
+                Some((_, None)) => continue,
+                Some((pc, Some(data))) => {
+                    
+                    return Some(ThreadGroup {
+                        pc: pc,
+                        data: mem::take(data),
+                    })
+                },
+            }
+        }
     }
 }

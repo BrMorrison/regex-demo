@@ -14,7 +14,7 @@ fn main() {
         process::exit(1);
     }
 
-    let regex_prog = regex::parse_regex(&args[1]).unwrap_or_else(|err| {
+    let regex_prog = regex::bin::parse_bin(&args[1]).unwrap_or_else(|err| {
         eprintln!("Error parsing regex: {err}");
         process::exit(1);
     });
