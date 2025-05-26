@@ -2,10 +2,12 @@ pub mod bin;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Instruction {
-    Match,
-    Save(usize),
-    Compare(u8, u8, bool),
-    Branch(u8, u8, usize),
-    Jump(usize),
+    Save(usize, bool),
+    Branch{
+        c_min: u8,
+        c_max: u8,
+        dest: usize,
+        consume: bool,
+        inverted: bool},
     Split(usize, usize),
 }

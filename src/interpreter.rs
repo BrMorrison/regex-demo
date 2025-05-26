@@ -32,30 +32,25 @@ impl <'a> Executor<'a> {
         for mut thread_group in current_threads.iter_mut() {
             let pc = thread_group.pc;
             match self.program[thread_group.pc] {
-                Instruction::Match => {
-                    let mut tmp_matches = thread_group.get_match_data(0);
-                    matches.append(&mut tmp_matches)
-                }
-                Instruction::Save(dest) => {
+                Instruction::Save(dest, is_match) => {
                     thread_group.save(dest, char_index);
-                    step_execution(pc + 1, thread_group);
-                }
-
-                Instruction::Compare(c_min, c_max, inverted) => {
-                    let in_range = c_min <= input_char && input_char <= c_max;
-                    if in_range != inverted{
-                        consume_and_step(pc + 1, thread_group);
-                    }
-                }
-                Instruction::Branch(c_min, c_max, new_pc) => {
-                    if c_min <= input_char && input_char <= c_max {
-                        step_execution(new_pc, thread_group);
+                    if is_match {
+                        let mut tmp_matches = thread_group.get_match_data(0);
+                        matches.append(&mut tmp_matches)
                     } else {
                         step_execution(pc + 1, thread_group);
                     }
                 }
-
-                Instruction::Jump(new_pc) => step_execution(new_pc, thread_group),
+                Instruction::Branch{c_min, c_max, dest, consume, inverted} => {
+                    let in_range = c_min <= input_char && input_char <= c_max;
+                    let is_match = in_range != inverted;
+                    match (consume, is_match) {
+                        (true, true) => consume_and_step(pc+1, thread_group),
+                        (true, false) => (),
+                        (false, true) => step_execution(dest, thread_group),
+                        (false, false) => step_execution(pc+1, thread_group),
+                    };
+                }
                 Instruction::Split(pc1, pc2) => {
                     step_execution(pc1, thread_group.clone());
                     step_execution(pc2, thread_group);
