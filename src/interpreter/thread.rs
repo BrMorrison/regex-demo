@@ -1,5 +1,4 @@
 use std::collections::LinkedList;
-use std::iter::Enumerate;
 use std::mem;
 use std::slice;
 use std::vec;
@@ -20,41 +19,40 @@ impl ThreadData {
     }
 }
 
+
+type StoredThreadData = (usize, LinkedList<ThreadData>);
+
 pub struct ThreadList {
-    threads: Vec<Option<LinkedList<ThreadData>>>,
+    threads: Vec<StoredThreadData>,
 }
 
 pub struct ThreadListIterMut<'a> {
-    iter: Enumerate<slice::IterMut<'a, Option<LinkedList<ThreadData>>>>,
+    iter: slice::IterMut<'a, StoredThreadData>,
 }
 
 impl ThreadList {
     pub fn new(capacity: usize) -> Self {
-        ThreadList { threads: vec![None; capacity] }
+        ThreadList { threads: Vec::with_capacity(capacity) }
     }
 
     pub fn add_thread(&mut self, pc: usize, mut thread_data: ThreadGroup) {
-        if let Some(data) =  &mut self.threads[pc] {
+        if let Some((_, data)) = self.threads.iter_mut().find(|(stored_pc, _)| {*stored_pc == pc}) {
             data.append(&mut thread_data.data);
         } else {
-            let mut new_data = LinkedList::new();
-            new_data.append(&mut thread_data.data);
-            self.threads[pc] = Some(new_data)
+            self.threads.push((pc, thread_data.data));
         }
     }
 
     pub fn clear(&mut self) {
-        for thread in self.threads.iter_mut() {
-            *thread = None;
-        }
+        self.threads.clear()
     }
 
     pub fn iter_mut(&mut self) -> ThreadListIterMut {
-        ThreadListIterMut { iter: self.threads.iter_mut().enumerate() }
+        ThreadListIterMut { iter: self.threads.iter_mut() }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.threads.iter().all(|t| { t.is_none() })
+        self.threads.is_empty()
     }
 
 }
@@ -94,18 +92,12 @@ impl <'a> Iterator for ThreadListIterMut<'a> {
     type Item = ThreadGroup;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.iter.next() {
-                None => return None,
-                Some((_, None)) => continue,
-                Some((pc, Some(data))) => {
-                    
-                    return Some(ThreadGroup {
-                        pc: pc,
-                        data: mem::take(data),
-                    })
-                },
-            }
+        match self.iter.next() {
+            None => None,
+            Some((pc, data)) => Some(ThreadGroup {
+                pc: *pc,
+                data: mem::take(data),
+            }),
         }
     }
 }
