@@ -1,0 +1,3 @@
+[submodule "Recompile"]
+	path = Recompile
+	url = https://github.com/BrMorrison/Recompile
